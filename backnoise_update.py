@@ -10,15 +10,18 @@ from collections import OrderedDict
 from variant_wkf.settings import client1 as client
 
 class parameterrs():
-	def __init__(self):
-		doc = '血液病背噪文件更新'
-		self.parser = argparse.ArgumentParser(description=doc, formatter_class=argparse.RawDescriptionHelpFormatter)
+        def __init__(self):
+                doc = '血液病背噪文件更新'
+                self.parser = argparse.ArgumentParser(description=doc, formatter_class=argparse.RawDescriptionHelpFormatter)
 
-		self.parser.add_argument('-i', '--input', dest='input', metavar='input file', type=str, help="the input file")
+                self.parser.add_argument('-i', '--input', dest='input', metavar='input file', type=str, help="the input file")
 
-		self.parser.add_argument('-m', '--mode', dest='mode', metavar='leukemia/lymphoma', type=str, help="the input file")
+                self.parser.add_argument('-m', '--mode', dest='mode', metavar='leukemia/lymphoma', type=str, help="the input file")
 
-		self.parser.add_argument('-o', '--output', dest='output', metavar='path/to/output', type=str, help="output file")
+                self.parser.add_argument('-o', '--output', dest='output', metavar='path/to/output', type=str, help="output file")
+
+                self.parser.add_argument('-r', '--result-path', dest='result_path', metavar='path/to/result/files', type=str,
+                                         required=True, help="base directory containing sample result files")
 
 
 
@@ -31,10 +34,29 @@ class parameterrs():
 							 stream=sys.stdout)
 
 	def repeat(self):
-		logging.info('output      : ' + self.args.output)
-		logging.info('mode      : ' + self.args.mode)
-		if self.args.input:
-			logging.info('input       : ' + self.args.input)
+                logging.info('output      : ' + self.args.output)
+                logging.info('mode      : ' + self.args.mode)
+                logging.info('result_path      : ' + self.args.result_path)
+                if self.args.input:
+                        logging.info('input       : ' + self.args.input)
+
+
+def find_sample_file(base_path, sample_id):
+        target_name = f"{sample_id}.all.txt"
+        candidate_files = []
+        for root, _, files in os.walk(base_path):
+                if target_name in files:
+                        candidate_files.append(os.path.join(root, target_name))
+
+        if len(candidate_files) == 0:
+                logging.warning(f"{target_name} is not existed in {base_path}.")
+                return None
+
+        candidate_files.sort()
+        if len(candidate_files) > 1:
+                logging.info(f"Found multiple files for {sample_id}, using {candidate_files[0]}")
+
+        return candidate_files[0]
 
 def mongo_find_NGS_Report():
 	db = client.NGS_Report
@@ -52,8 +74,9 @@ if __name__ == '__main__':
 
 	###读入老版背噪数据
 	inputfile = params.args.input
-	mode = params.args.mode
-	outfile = params.args.output
+        mode = params.args.mode
+        outfile = params.args.output
+        result_path = params.args.result_path
 
 	fa = open(inputfile,'r')
 	data = json.load(fa)
@@ -72,17 +95,15 @@ if __name__ == '__main__':
 		project_type = item['project_type'].replace('基因检测(含胚系配对)','基因配对检测')
 
 		###根据panel过滤
-		if mode == 'leukemia':
-			if project_panel[project_type] != 'leukaemia180_spikein':
-				continue
+                if mode == 'leukemia':
+                        if project_panel[project_type] != 'leukaemia180_spikein':
+                                continue
 
-		###打开本地文件
-		file = f"/mnt/analysis6/NextSeq-NS500/{sequencing_time}_ngs/XueYeBing/backup/{sample_ID}/{sample_ID}.all.txt"
-		try:
-			fa = open(file, 'r')
-		except:
-			print (f'{file} is not existed.')
-			continue
+                ###打开本地文件
+                file = find_sample_file(result_path, sample_ID)
+                if not file:
+                        continue
+                fa = open(file, 'r')
 		###找到hgvs和物理位置对应关系
 		falines = fa.readlines()
 		fa.close()
