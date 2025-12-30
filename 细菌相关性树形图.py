@@ -66,11 +66,10 @@ for idx, row in species_sig.iterrows():
     species_name = row['compared_list']
     # 从species名称中提取genus（通常是第一个单词）
     genus_name = species_name.split()[0] if ' ' in species_name else species_name
-    
+
     result = {
         'taxonomy_level': 'Species',
         'name': species_name,
-        'genus': genus_name,
         'pearson_corr': row['pearson_corr'],
         'pearson_p': row['pearson_p'],
         'pearson_fdr': row['pearson_fdr'],
@@ -96,8 +95,21 @@ all_results = genus_results + species_results
 output_df = pd.DataFrame(all_results)
 
 # 重新排列列的顺序，使其更易读
-column_order = ['taxonomy_level', 'name', 'D', 'P', 'C', 'O', 'F', 'G'] + \
-               [col for col in output_df.columns if col not in ['taxonomy_level', 'name', 'D', 'P', 'C', 'O', 'F', 'G']]
+column_order = [
+    'taxonomy_level',
+    'name',
+    'D',
+    'P',
+    'C',
+    'O',
+    'F',
+    'G',
+    'S',
+    'pearson_corr',
+    'pearson_p',
+    'pearson_fdr',
+    'pearson_sig'
+]
 
 # 确保所有列都存在
 for col in column_order:
